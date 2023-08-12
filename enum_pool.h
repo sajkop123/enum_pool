@@ -15,9 +15,6 @@ template<typename _Key,
          typename _Tp,
          size_t _MaxEnumSize = static_cast<size_t>(_Key::ENUM_MAP_MAX_SIZE)>
 class enum_map {
- private:
-  typedef std::map<_Key, _Tp> stlmap_container_t;
-
  public:
   // types for user:
   typedef _Key                                          key_type;
@@ -38,26 +35,23 @@ class enum_map {
 
 
  public:  // Member functions:
-  explicit enum_map() {
-    clear();
-  }
+  explicit enum_map() {}
 
   enum_map(std::initializer_list<value_type> __l) {
-    __clear_m_data();
     for (auto& it : __l) {
       m_data.emplace_back(it);
     }
-    __fill_m_ptr();
+    __refresh_m_ptr();
   }
 
   enum_map(const enum_map& __other) {
     m_data = __other.m_data;
-    __fill_m_ptr();
+    __refresh_m_ptr();
   }
 
   enum_map(enum_map&& __other) {
-    m_data = std::forward<data_container_t>(__other.m_data);
-    __fill_m_ptr();
+    m_data = std::move(__other.m_data);
+    __refresh_m_ptr();
     __other.clear();
   }
 
@@ -65,16 +59,15 @@ class enum_map {
   enum_map(_InputIterator __first, _InputIterator __second) {
     clear();
     for (auto& it = __first; it != __second; ++it) {
-      m_data.emplace_back(it);
+      __insert_unique_(it);
     }
-    __fill_m_ptr();
   }
 
   ~enum_map() = default;
 
   enum_map& operator=(const enum_map& __other) {
     m_data = __other.m_data;
-    __fill_m_ptr();
+    __refresh_m_ptr();
     return *this;
   }
 
@@ -376,7 +369,7 @@ class enum_map {
         });
     if (it != m_data.end()) {
       m_data.erase(it);
-      __fill_m_ptr();
+      __refresh_m_ptr();
       return 1;
     }
     return 0;
@@ -390,7 +383,7 @@ class enum_map {
         });
     if (it != m_data.end()) {
       m_data.erase(it);
-      __fill_m_ptr();
+      __refresh_m_ptr();
       return 1;
     }
     return 0;
@@ -399,10 +392,10 @@ class enum_map {
   inline void
   __erase_by_iter_(const_iterator __pos) {
     m_data.erase(__pos);
-    __fill_m_ptr();
+    __refresh_m_ptr();
   }
 
-  inline void __fill_m_ptr() {
+  inline void __refresh_m_ptr() {
     __clear_m_ptr();
     for (auto& data : m_data) {
       m_ptr[index(data.first)] = std::addressof(data);
@@ -418,5 +411,5 @@ class enum_map {
 
  private:
   data_container_t m_data;
-  mapping_container_t m_ptr;
+  mapping_container_t m_ptr = {nullptr};
 };

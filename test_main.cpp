@@ -1,4 +1,5 @@
 #include "enum_pool.h"
+#include "common.h"
 
 #include <sstream>
 
@@ -80,7 +81,20 @@ int main() {
     map.swap(new_a);
     print_enum_map(map);
   }
+
+  {
+    for (auto& it : map) {
+      int a = it.second;
+    }
+  }
+  {
+    MY_LOGD("7. initializer_list");
+    enum_map<ENUM, int> new_a = {{ENUM::C, 22}};
+    MY_LOGD("%d", new_a.at(ENUM::C));
+    print_enum_map(map);
+  }
 }
 
 
 // https://quick-bench.com/q/h2ZlNfzMFBuhe-A0yjgg2VuMv4g
+// https://quick-bench.com/q/Ke7zst9JAKJkNMbK9k9FL2jbuCs
