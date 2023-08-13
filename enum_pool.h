@@ -57,7 +57,6 @@ class enum_map {
 
   template<typename _InputIterator>
   enum_map(_InputIterator __first, _InputIterator __second) {
-    clear();
     for (auto& it = __first; it != __second; ++it) {
       __insert_unique_(it);
     }
@@ -74,6 +73,7 @@ class enum_map {
   enum_map& operator=(enum_map&& __other) {
     m_data = std::move<data_container_t>(__other.m_data);
     m_ptr = std::move<data_container_t>(__other.m_ptr);
+    __other.__clear_m_ptr_();  // std::move(pointer) is copy, clear it.
     return *this;
   }
 
@@ -88,6 +88,7 @@ class enum_map {
   mapped_type&
   at(const key_type& __key) {
     pointer p = m_ptr[index(__key)];
+    // TODO(OPT) add cc_unlikely
     if (!p) {
       throw std::runtime_error("access data not in the map");
     }
@@ -97,6 +98,7 @@ class enum_map {
   const mapped_type&
   at(const key_type& __key) const {
     const_pointer p = m_ptr[index(__key)];
+    // TODO(OPT) add cc_unlikely
     if (!p) {
       throw std::runtime_error("access data not in the map");
     }
@@ -112,7 +114,7 @@ class enum_map {
       p = std::addressof(m_data.back());
       m_ptr[index(__key)] = p;
     }
-    return *p;
+    return (*p).second;
   }
 
   mapped_type&
@@ -124,7 +126,7 @@ class enum_map {
       p = std::addressof(m_data.back());
       m_ptr[index(__key)] = p;
     }
-    return *p;
+    return (*p).second;
   }
 
  public:  // Iterators:
@@ -169,6 +171,16 @@ class enum_map {
   }
 
   const_reverse_iterator
+  rbegin() const noexcept {
+    return m_data.rbegin();
+  }
+
+  const_reverse_iterator
+  rend() const noexcept {
+    return m_data.rend();
+  }
+
+  const_reverse_iterator
   crbegin() const noexcept {
     return m_data.rbegin();
   }
@@ -197,8 +209,8 @@ class enum_map {
  public:  // Modifier:
   void
   clear() noexcept {
-    __clear_m_data();
-    __clear_m_ptr();
+    __clear_m_data_();
+    __clear_m_ptr_();
   }
 
   std::pair<iterator, bool>
@@ -230,7 +242,6 @@ class enum_map {
   //   insert
   // }
 
-
   void
   erase(iterator __pos) {
     __erase_by_iter_(__pos);
@@ -258,12 +269,13 @@ class enum_map {
  public:  // Lookup:
   size_type
   count(const key_type& __key) {
+    // support 1-to-1 data storage.
     return m_ptr[index(__key)] ? 1 : 0;
   }
 
   size_type
   count(key_type&& __key) {
-    return m_ptr[index(std::move(__key))] ? 1 : 0;
+    return m_ptr[index(std::forward<key_type>(__key))] ? 1 : 0;
   }
 
   iterator
@@ -283,23 +295,14 @@ class enum_map {
   }
 
  private:  // private method
-
   inline size_t
-  index(const key_type& __key) const {
-    size_t index = static_cast<size_t>(__key);
-    if (index < 0 || index >= _MaxEnumSize) {
-      throw std::runtime_error("invalid enum to size_t");
-    }
-    return index;
+  index(const key_type& __key) const noexcept {
+    return static_cast<size_t>(__key);
   }
 
   inline size_t
-  index(key_type&& __key) const {
-    size_t index = static_cast<size_t>(std::forward<key_type>(__key));
-    if (index < 0 || index >= _MaxEnumSize) {
-      throw std::runtime_error("invalid enum to size_t");
-    }
-    return index;
+  index(key_type&& __key) const noexcept {
+    return  static_cast<size_t>(std::forward<key_type>(__key));
   }
 
   /**
@@ -396,16 +399,16 @@ class enum_map {
   }
 
   inline void __refresh_m_ptr() {
-    __clear_m_ptr();
+    __clear_m_ptr_();
     for (auto& data : m_data) {
       m_ptr[index(data.first)] = std::addressof(data);
     }
   }
 
-  inline void __clear_m_data() {
+  inline void __clear_m_data_() {
     m_data.clear();
   }
-  inline void __clear_m_ptr() {
+  inline void __clear_m_ptr_() {
     std::fill(m_ptr.begin(), m_ptr.end(), nullptr);
   }
 

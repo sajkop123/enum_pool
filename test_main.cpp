@@ -93,6 +93,13 @@ int main() {
     MY_LOGD("%d", new_a.at(ENUM::C));
     print_enum_map(map);
   }
+  {
+    MY_LOGD("8. [ENUM::D] = 9999");
+    const ENUM e = ENUM::D;
+    map[e] = 9999;
+    print_enum_map(map);
+  }
+  return 0;
 }
 
 
